@@ -1,0 +1,82 @@
+---
+title: "R Notebook"
+author: royber manjarrez y gustabo garcia
+date: 22 mar. 2021
+output: html_notebook
+---
+```{r}
+library(VIM)
+library(dplyr)
+library(modeest)
+library(tidyr)
+library(magrittr)
+library(FactoMineR)
+library(ggplot2)
+library(datetime)
+library(lubridate)
+```
+```{r}
+data <- read.csv("https://raw.githubusercontent.com/Roybermahe/Prediccion-Accidentes/main/2015_2019_siniestralidad_vial%20(1).csv", stringsAsFactors = TRUE)
+summary(data)
+```
+
+Type any R code in the chunk, for example:
+```{r}
+max(data$TOTAL_HERIDOS)
+max(data$TOTAL_MUERTOS)
+```
+```{r}
+min(data$TOTAL_HERIDOS)
+min(data$TOTAL_MUERTOS)
+```
+```{r}
+median(data$TOTAL_HERIDOS)
+median(data$TOTAL_MUERTOS)
+```
+```{r}
+mean(data$TOTAL_HERIDOS)
+mean(data$TOTAL_MUERTOS)
+```
+```{r}
+mfv(data$TOTAL_MUERTOS)
+mfv(data$TOTAL_HERIDOS)
+```
+```{r}
+var(data$TOTAL_MUERTOS)
+var(data$TOTAL_HERIDOS)
+```
+```{r}
+sd(data$TOTAL_MUERTOS)
+sd(data$TOTAL_HERIDOS)
+```
+```{r}
+piedata <- data %>% count(GRAVEDAD)
+pie <- ggplot(piedata, aes(x="", y=n, fill=GRAVEDAD)) + geom_bar(stat="identity", width=1)
+pie + coord_polar("y", start=0) + geom_text(aes(label = paste0(round((n*100)/173444), "%")), position = position_stack(vjust = 0.5)) + labs(x = NULL, y = NULL, fill = NULL, title = "Distribución de la gravedad del accidente")
+```
+
+```{r}
+datosfaltante <- aggr(data, prop = TRUE, number = TRUE, border= NA, combine = TRUE)
+```
+```{r}
+sum(is.na(data$OBJETO_FIJO))
+```
+```{r}
+ggplot(data, aes(x=reorder(CLASE, -TOTAL_MUERTOS), y=TOTAL_MUERTOS)) + geom_bar(stat="identity", position = "stack")
+```
+```{r}
+ggplot(data, aes(x=reorder(CLASE, -TOTAL_HERIDOS), y=TOTAL_HERIDOS)) + geom_bar(stat="identity", position = "stack")
+```
+```{r}
+#ggplot(data, aes(x=TOTAL_MUERTOS, fill=GRAVEDAD)) + geom_point()
+```
+```{r}
+withHours <- data
+withHours$HORA <- hms(as.character(withHours$HORA))
+ggplot(data, aes(hour(withHours$HORA), fill=withHours$GRAVEDAD, color=withHours$GRAVEDAD)) + geom_line(stat = "density") + ggtitle("Horas del día vs gravedad del accidente")
+```
+```{r}
+withMonths <- data
+withMonths$FECHA <- format(as.Date(withMonths$FECHA, format = "%d/%m/%Y"), "%Y-%m-%d")
+ggplot(withMonths, aes(month(ymd(FECHA)), fill=GRAVEDAD, color=GRAVEDAD)) + geom_line(stat = "density") + ggtitle("Meses del año vs gravedad del accidente")
+```
