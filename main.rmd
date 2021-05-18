@@ -1,10 +1,11 @@
 ---
-title: "R Notebook"
-author: royber manjarrez y gustabo garcia
+title: "Proyecto de aula: APLICACIÓN DE LAS TÉCNICAS DE MINERÍA DE DATOS PARA PREDECIR LA GRAVEDAD DE LOS SINIESTROS VIALES EN BOGOTÁ"
+author: Royber Manjarrez y Gustavo Garcia
 date: 22 mar. 2021
 output: html_notebook
 ---
-```{r}
+### Primero se cargan todas las librerias necesarias para el desarrollo del proyecto
+```{r message = FALSE, warning = FALSE}
 library(VIM)
 library(dplyr)
 library(modeest)
@@ -14,62 +15,69 @@ library(FactoMineR)
 library(ggplot2)
 library(datetime)
 library(lubridate)
-```
-```{r}
-data <- read.csv("https://raw.githubusercontent.com/Roybermahe/Prediccion-Accidentes/main/2015_2019_siniestralidad_vial%20(1).csv", stringsAsFactors = TRUE)
-summary(data)
+library(naniar)
 ```
 
-Type any R code in the chunk, for example:
+## Fase II: Estudio y comprención de los datos.
+#### una vez finalizada la fase I, entendimiento del negocio, se procede a realizar las tareas de la fase II.
+
+### Recolección de los datos iniciales.
+#### Se cargan los datos obtenidos de la pagina de datos abiertos de Bogotá.
+#### URL: https://datosabiertos.bogota.gov.co/dataset/siniestros-viales-consolidados-bogota-d-c
+#### los datos son obtenidos mediante un archivo xls, dicho archivo es cargado en un repositorio de github para su facil acceso.
 ```{r}
-max(data$TOTAL_HERIDOS)
-max(data$TOTAL_MUERTOS)
+data <- read.csv("https://raw.githubusercontent.com/Roybermahe/Prediccion-Accidentes/main/2015_2019_siniestralidad_vial%20(1).csv", stringsAsFactors = TRUE, na.strings ='')
+summary(data)
 ```
+### Descripción de los datos.
+#### Numero de instancias
 ```{r}
-min(data$TOTAL_HERIDOS)
-min(data$TOTAL_MUERTOS)
+  nrow(data)
 ```
+#### Numero de atributos.
 ```{r}
-median(data$TOTAL_HERIDOS)
-median(data$TOTAL_MUERTOS)
+ncol(data)
 ```
+##### tipos de atributos
 ```{r}
-mean(data$TOTAL_HERIDOS)
-mean(data$TOTAL_MUERTOS)
+  sapply(data,class)
 ```
+### Descripción de los atributos
+
 ```{r}
-mfv(data$TOTAL_MUERTOS)
-mfv(data$TOTAL_HERIDOS)
+ATRIBUTOS <- c("Valor Maximo","Valor Minimo", "Mediana", "Media", "Desv. Estandar", "Varianza", "Moda")
+
+TOTAL_MUERTOS <- c(max(data$TOTAL_MUERTOS),min(data$TOTAL_MUERTOS),median(data$TOTAL_MUERTOS),mean(data$TOTAL_MUERTOS),sd(data$TOTAL_MUERTOS),var(data$TOTAL_MUERTOS),mfv(data$TOTAL_MUERTOS))
+
+TOTAL_HERIDOS <- c(max(data$TOTAL_HERIDOS),min(data$TOTAL_HERIDOS),median(data$TOTAL_HERIDOS),mean(data$TOTAL_HERIDOS),sd(data$TOTAL_HERIDOS),var(data$TOTAL_HERIDOS),mfv(data$TOTAL_HERIDOS))
+
+informe <- data.frame(ATRIBUTOS, TOTAL_MUERTOS, TOTAL_HERIDOS)
+print(informe)
 ```
-```{r}
-var(data$TOTAL_MUERTOS)
-var(data$TOTAL_HERIDOS)
-```
-```{r}
-sd(data$TOTAL_MUERTOS)
-sd(data$TOTAL_HERIDOS)
-```
+### Exploración de datos
 ```{r}
 piedata <- data %>% count(GRAVEDAD)
 pie <- ggplot(piedata, aes(x="", y=n, fill=GRAVEDAD)) + geom_bar(stat="identity", width=1)
 pie + coord_polar("y", start=0) + geom_text(aes(label = paste0(round((n*100)/173444), "%")), position = position_stack(vjust = 0.5)) + labs(x = NULL, y = NULL, fill = NULL, title = "Distribución de la gravedad del accidente")
 ```
+```{r}
+piedata <- data %>% count(CLASE)
+pie <- ggplot(piedata, aes(x="", y=n, fill=CLASE)) + geom_bar(stat="identity", width=1)
+pie + coord_polar("y", start=0) + geom_text(aes(label = paste0(round((n*100)/173444), "%")), position = position_stack(vjust = 0.5)) + labs(x = NULL, y = NULL, fill = NULL, title = "Distribución de numero de clase")
+```
+
 
 ```{r}
-datosfaltante <- aggr(data, prop = TRUE, number = TRUE, border= NA, combine = TRUE)
+ggplot(data, aes(x=reorder(CLASE, -TOTAL_MUERTOS), y=TOTAL_MUERTOS)) + geom_bar(stat="identity", position = "stack")+
+        labs(title = "cantidad total de muerdos de acuerdo a la clase de accidente") +
+theme(plot.title = element_text(hjust = 0.5))
 ```
 ```{r}
-sum(is.na(data$OBJETO_FIJO))
+ggplot(data, aes(x=reorder(CLASE, -TOTAL_HERIDOS), y=TOTAL_HERIDOS)) + geom_bar(stat="identity", position = "stack")+
+        labs(title = "Cantidad total de heridos de acuerdo a la clase de accidente") +
+theme(plot.title = element_text(hjust = 0.5))
 ```
-```{r}
-ggplot(data, aes(x=reorder(CLASE, -TOTAL_MUERTOS), y=TOTAL_MUERTOS)) + geom_bar(stat="identity", position = "stack")
-```
-```{r}
-ggplot(data, aes(x=reorder(CLASE, -TOTAL_HERIDOS), y=TOTAL_HERIDOS)) + geom_bar(stat="identity", position = "stack")
-```
-```{r}
-#ggplot(data, aes(x=TOTAL_MUERTOS, fill=GRAVEDAD)) + geom_point()
-```
+
 ```{r}
 withHours <- data
 withHours$HORA <- hms(as.character(withHours$HORA))
@@ -80,3 +88,34 @@ withMonths <- data
 withMonths$FECHA <- format(as.Date(withMonths$FECHA, format = "%d/%m/%Y"), "%Y-%m-%d")
 ggplot(withMonths, aes(month(ymd(FECHA)), fill=GRAVEDAD, color=GRAVEDAD)) + geom_line(stat = "density") + ggtitle("Meses del año vs gravedad del accidente")
 ```
+### Verificación de la calidad de los datos.
+```{r}
+vis_miss(data, warn_large_data = FALSE)+
+        labs(title = "Reporte de datos faltantes") +
+        theme(plot.title = element_text(hjust = 0.5))
+```
+```{r}
+print('Objeto fijo')
+sum(is.na(data$OBJETO_FIJO))
+print('Choque con')
+sum(is.na(data$CHOQUE_CON))
+print('total de datos faltantes')
+n_miss(data)
+```
+
+### Selección de datos.
+```{r}
+FECHA <-data$FECHA
+HORA <-data$HORA
+GRAVEDAD <-data$GRAVEDAD
+CLASE <-data$CLASE
+CHOQUE_CON <-data$CHOQUE_CON
+TOTAL_MUERTOS <-data$TOTAL_MUERTOS
+TOTAL_HERIDOS <-data$TOTAL_HERIDOS
+DISENO_LUGAR <-data$DISENO_LUGAR
+LOCALIDAD <-data$LOCALIDAD
+
+data_Trafico <- data.frame(FECHA, HORA, GRAVEDAD, CLASE, CHOQUE_CON, TOTAL_MUERTOS, TOTAL_HERIDOS, DISENO_LUGAR, LOCALIDAD)
+```
+
+
